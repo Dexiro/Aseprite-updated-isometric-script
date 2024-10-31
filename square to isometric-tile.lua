@@ -5,49 +5,21 @@
 -- Markeringen skall vara tre pixlar över om det är 16x16
 -- Markeringen skall vara 6 pixlar över om det är 32x32
 
-local originPoint
-
-
--- bail if there's no active sprite
-local sprite = app.activeSprite
-local currentCel = app.activeCel
-if not sprite then 
-    print("No sprite")
-    return 
-end
-
--- bail if nothing's selected
-local selection = sprite.selection
-if selection.isEmpty then 
-    print("Missing selection")
-    return 
-end
-
-if selection.bounds.width % 2 ~= 0 then
-  print("The width must be an even number")
-  return
-end
-
-if selection.bounds.width ~= selection.bounds.height then
-  print("The selection must be a square")
-  return
-end
-
-function CopyImage(fromImage, rect, newImageSize)
+function CopyImage(fromImage, rect, newImageSize, colorMode)
   local pixelsFromSelection = fromImage:pixels(rect)
-  local selectedImage = Image(newImageSize.x, newImageSize.y)
+  local imageCopy = Image(newImageSize.x, newImageSize.y, colorMode)
   
   for it in pixelsFromSelection do
     local pixelValue = it()
-    selectedImage:putPixel(it.x - rect.x, it.y - rect.y, pixelValue)
+    imageCopy:drawPixel(it.x - rect.x, it.y - rect.y, pixelValue)
   end
-  return selectedImage
+  return imageCopy
 end
 
 --loop through x texture coords
-function ToIso(fromImage, rect, newImageSize)
+function ToIso(fromImage, rect, newImageSize, colorMode)
   local pixelsFromSelection = fromImage:pixels(rect)
-  local selectedImage = Image(newImageSize.x, newImageSize.y)
+  local selectedImage = Image(newImageSize.x, newImageSize.y, colorMode)
 
   for it in pixelsFromSelection do
     local pixelValue = it()
@@ -65,26 +37,49 @@ function ToIso(fromImage, rect, newImageSize)
   return selectedImage
 end
 
-local isometricTile
 
-local currentImage = Image(sprite.width, sprite.height)
+---------------------------------------------
+-- check that the sprite selection is valid
+local sprite = app.sprite
+if not sprite then 
+    print("No sprite")
+    return 
+end
+local selection = sprite.selection
+if selection.isEmpty then 
+    print("Missing selection")
+    return 
+end
+if selection.bounds.width % 2 ~= 0 then
+  print("The width must be an even number")
+  return
+end
+if selection.bounds.width ~= selection.bounds.height then
+  print("The selection must be a square")
+  return
+end
+---------------------------------------------
+local selectWidth = selection.bounds.width
+local selectHeight = selection.bounds.height
+local originPoint = selection.origin
+local currentCel = app.cel
+local colorMode = sprite.colorMode
+---------------------------------------------
+
+local currentImage = Image(sprite.width, sprite.height, colorMode)
 currentImage:drawSprite(sprite, currentCel.frameNumber)
-local oneSide = selection.bounds.width
-local selectedImage = CopyImage(currentImage, selection.bounds, Point(oneSide, oneSide))
 
-originPoint = selection.origin
+local selectedImage = CopyImage(currentImage, selection.bounds, Point(selectWidth, selectHeight), colorMode)
 
-isometricTile = ToIso(selectedImage, Rectangle(0,0,oneSide,oneSide), Point(oneSide * 4,oneSide * 2))
-
-isometricTile:resize{width=(oneSide*2),height=oneSide}
-isometricTile = CopyImage(isometricTile, Rectangle(0,1,oneSide*2,oneSide), Point(oneSide*2,oneSide))
+local isometricTile = ToIso(selectedImage, Rectangle(0,0,selectWidth,selectHeight), Point(selectWidth * 4,selectHeight * 2), colorMode)
+isometricTile:resize{width=(selectWidth*2),height=selectHeight}
+isometricTile = CopyImage(isometricTile, Rectangle(0,1,selectWidth*2,selectHeight), Point(selectWidth*2,selectHeight), colorMode)
 
 local outputLayer = sprite:newLayer()
 outputLayer.name = "IsometricTile"
 local outputSprite = outputLayer.sprite
 local cel = sprite:newCel(outputLayer, currentCel.frameNumber)
-local backToOriginImage = Image(outputSprite.width,outputSprite.height)
+local backToOriginImage = Image(outputSprite.width,outputSprite.height, colorMode)
 --backToOriginImage:drawImage(newIso, originPoint)
 backToOriginImage:drawImage(isometricTile, originPoint)
 cel.image = backToOriginImage
-

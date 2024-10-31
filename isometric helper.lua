@@ -1,8 +1,8 @@
 local downscale = false
 
-function CopyImage(fromImage, rect, newImageSize)
+function CopyImage(fromImage, rect, newImageSize, colorMode)
   local pixelsFromSelection = fromImage:pixels(rect)
-  local selectedImage = Image(newImageSize.x, newImageSize.y)
+  local selectedImage = Image(newImageSize.x, newImageSize.y, colorMode)
   
   for it in pixelsFromSelection do
     local pixelValue = it()
@@ -11,9 +11,9 @@ function CopyImage(fromImage, rect, newImageSize)
   return selectedImage
 end
 
-function SlideImage(fromImage, rect, isFront)
+function SlideImage(fromImage, rect, isFront, colorMode)
   local pixelsFromSelection = fromImage:pixels(rect)
-  local slidedImage = Image(rect.width, rect.height + rect.width/2)
+  local slidedImage = Image(rect.width, rect.height + rect.width/2, colorMode)
   local yOffset = 0
   local yStartOffset = 0
   local walker = 1
@@ -41,9 +41,9 @@ function SlideImage(fromImage, rect, isFront)
 end
 
 --loop through x texture coords
-function ToIso(fromImage, rect, newImageSize)
+function ToIso(fromImage, rect, newImageSize, colorMode)
   local pixelsFromSelection = fromImage:pixels(rect)
-  local selectedImage = Image(newImageSize.x, newImageSize.y)
+  local selectedImage = Image(newImageSize.x, newImageSize.y, colorMode)
 
   for it in pixelsFromSelection do
     local pixelValue = it()
@@ -104,10 +104,10 @@ function ConvertToSide()
   if(not ValidateSelection(sprite, selection)) then
     return
   end
-
-  local currentImage = Image(sprite.width, sprite.height)
+  local colorMode = sprite.colorMode
+  local currentImage = Image(sprite.width, sprite.height, colorMode)
   currentImage:drawSprite(sprite, currentCel.frameNumber)
-  local selectedImage = SlideImage(currentImage, selection.bounds, false)
+  local selectedImage = SlideImage(currentImage, selection.bounds, false, colorMode)
 
   app.transaction(
     function()
@@ -115,7 +115,7 @@ function ConvertToSide()
       outputLayer.name = "IsometricSide"
       local outputSprite = outputLayer.sprite
       local cel = sprite:newCel(outputLayer, currentCel.frameNumber)
-      local backToOriginImage = Image(outputSprite.width,outputSprite.height)
+      local backToOriginImage = Image(outputSprite.width,outputSprite.height, colorMode)
       backToOriginImage:drawImage(selectedImage, originPoint)
       cel.image = backToOriginImage
     end
@@ -131,10 +131,10 @@ function ConvertToFront()
   if(not ValidateSelection(sprite, selection)) then
     return
   end
-
-  local currentImage = Image(sprite.width, sprite.height)
+  local colorMode = sprite.colorMode
+  local currentImage = Image(sprite.width, sprite.height, colorMode)
   currentImage:drawSprite(sprite, currentCel.frameNumber)
-  local selectedImage = SlideImage(currentImage, selection.bounds, true)
+  local selectedImage = SlideImage(currentImage, selection.bounds, true, colorMode)
 
   app.transaction(
     function() 
@@ -143,7 +143,7 @@ function ConvertToFront()
       outputLayer.name = "IsometricFront"
       local outputSprite = outputLayer.sprite
       local cel = sprite:newCel(outputLayer, currentCel.frameNumber)
-      local backToOriginImage = Image(outputSprite.width,outputSprite.height)
+      local backToOriginImage = Image(outputSprite.width,outputSprite.height, colorMode)
       backToOriginImage:drawImage(selectedImage, originPoint)
       cel.image = backToOriginImage
     end
@@ -159,21 +159,23 @@ function ConvertToTile()
   if(not ValidateSelection(sprite, selection)) then
     return
   end
+  
+  local colorMode = sprite.colorMode
 
   local isometricTile
 
-  local currentImage = Image(sprite.width, sprite.height)
+  local currentImage = Image(sprite.width, sprite.height, colorMode)
   currentImage:drawSprite(sprite, currentCel.frameNumber)
   local oneSide = selection.bounds.width
-  local selectedImage = CopyImage(currentImage, selection.bounds, Point(oneSide, oneSide))
+  local selectedImage = CopyImage(currentImage, selection.bounds, Point(oneSide, oneSide), colorMode)
 
-  isometricTile = ToIso(selectedImage, Rectangle(0,0,oneSide,oneSide), Point(oneSide * 4,oneSide * 2))
+  isometricTile = ToIso(selectedImage, Rectangle(0,0,oneSide,oneSide), Point(oneSide * 4,oneSide * 2), colorMode)
 
   if downscale then
     isometricTile:resize{width=(oneSide*2),height=oneSide}
-    isometricTile = CopyImage(isometricTile, Rectangle(0,1,oneSide*2,oneSide), Point(oneSide*2,oneSide))
+    isometricTile = CopyImage(isometricTile, Rectangle(0,1,oneSide*2,oneSide), Point(oneSide*2,oneSide), colorMode)
   else
-    isometricTile = CopyImage(isometricTile, Rectangle(0,1,oneSide*4,oneSide*2), Point(oneSide*4,oneSide*2))
+    isometricTile = CopyImage(isometricTile, Rectangle(0,1,oneSide*4,oneSide*2), Point(oneSide*4,oneSide*2), colorMode)
   end
 
   app.transaction(
@@ -182,7 +184,7 @@ function ConvertToTile()
       outputLayer.name = "IsometricTile"
       local outputSprite = outputLayer.sprite
       
-      local backToOriginImage = Image(outputSprite.width,outputSprite.height)
+      local backToOriginImage = Image(outputSprite.width,outputSprite.height, colorMode)
       backToOriginImage:drawImage(isometricTile, originPoint)
       local cel = outputSprite:newCel(outputLayer, currentCel.frameNumber)
       cel.image = backToOriginImage

@@ -4,8 +4,8 @@
 local originPoint
 
 -- bail if there's no active sprite
-local sprite = app.activeSprite
-local currentCel = app.activeCel
+local sprite = app.sprite
+local currentCel = app.cel
 if not sprite then 
     print("No sprite")
     return 
@@ -22,9 +22,9 @@ if selection.bounds.width % 2 ~= 0 then
     print("The width must be an even number")
 end
 
-function CopyImage(fromImage, rect)
+function CopyImage(fromImage, rect, colorMode)
     local pixelsFromSelection = fromImage:pixels(rect)
-    local selectedImage = Image(rect.width, rect.height + rect.width/2)
+    local selectedImage = Image(rect.width, rect.height + rect.width/2, colorMode)
     local yOffset = 0
     
     for it in pixelsFromSelection do
@@ -43,16 +43,18 @@ function CopyImage(fromImage, rect)
     return selectedImage
 end
 
+local colorMode = sprite.colorMode
+
 originPoint = selection.origin
-local currentImage = Image(sprite.width, sprite.height)
+local currentImage = Image(sprite.width, sprite.height, colorMode)
 currentImage:drawSprite(sprite, currentCel.frameNumber)
-local selectedImage = CopyImage(currentImage, selection.bounds)
+local selectedImage = CopyImage(currentImage, selection.bounds, colorMode)
 
 local outputLayer = sprite:newLayer()
 outputLayer.name = "IsometricSide"
 local outputSprite = outputLayer.sprite
 local cel = sprite:newCel(outputLayer, currentCel.frameNumber)
-local backToOriginImage = Image(outputSprite.width,outputSprite.height)
+local backToOriginImage = Image(outputSprite.width,outputSprite.height, colorMode)
 --backToOriginImage:drawImage(newIso, originPoint)
 backToOriginImage:drawImage(selectedImage, originPoint)
 cel.image = backToOriginImage
